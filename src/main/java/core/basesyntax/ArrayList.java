@@ -1,33 +1,34 @@
 package core.basesyntax;
 
+import java.util.NoSuchElementException;
+
 public class ArrayList<T> implements List<T> {
     private static final int DEFAULT_CAPACITY = 10;
-    private int size = 0;
-    private Object[] objects = new Object[DEFAULT_CAPACITY];
+    private static final float GROWTH_FACTOR = 1.5f;
+
+    private int size;
+    private Object[] objects;
+
+    public ArrayList() {
+        size = 0;
+        objects = new Object[DEFAULT_CAPACITY];
+    }
 
     @Override
     public void add(T value) {
-        if (size == objects.length) {
-            Object[] copy = new Object[(int) (objects.length * 1.5)];
-            System.arraycopy(objects, 0, copy, 0, objects.length);
-            objects = copy;
-        }
+        ensureCapacity();
         objects[size] = value;
         size++;
     }
 
     @Override
     public void add(T value, int index) {
-        if (index < 0 || index > size) {
-            throw new ArrayListIndexOutOfBoundsException("Index out of bound");
-        }
-        if (size == objects.length) {
-            Object[] copy = new Object[(int) (objects.length * 1.5)];
-            System.arraycopy(objects, 0, copy, 0, objects.length);
-            objects = copy;
-        }
-        for (int i = size; i > index; i--) {
-            objects[i] = objects[i - 1];
+        checkIndexForAdd(index);
+        ensureCapacity();
+
+        int elementsToMove = size - index;
+        if (elementsToMove > 0) {
+            System.arraycopy(objects, index, objects, index + 1, elementsToMove);
         }
 
         objects[index] = value;
@@ -37,70 +38,40 @@ public class ArrayList<T> implements List<T> {
     @Override
     public void addAll(List<T> list) {
         if (list == null) {
-            return;
+            throw new NullPointerException("List must not be null");
         }
+
         for (int i = 0; i < list.size(); i++) {
-            this.add(list.get(i));
+            add(list.get(i));
         }
     }
 
     @Override
     public T get(int index) {
-        if (index >= 0 && index < size) {
-            return (T) objects[index];
-        }
-        throw new ArrayListIndexOutOfBoundsException("Index out of bound");
+        checkIndex(index);
+        return elementAt(index);
     }
 
     @Override
     public void set(T value, int index) {
-        if (index >= 0 && index < size) {
-            objects[index] = value;
-            return;
-        }
-        throw new ArrayListIndexOutOfBoundsException("Index out of bound");
+        checkIndex(index);
+        objects[index] = value;
     }
 
     @Override
     public T remove(int index) {
-        if (index >= 0 && index < size) {
-            final T removed = (T) objects[index];
-
-            for (int i = index; i < size - 1; i++) {
-                objects[i] = objects[i + 1];
-            }
-
-            objects[--size] = null; // уменьшили size и сразу очистили
-
-            return removed;
-        }
-        throw new ArrayListIndexOutOfBoundsException("Index out of bound");
+        checkIndex(index);
+        return removeAt(index);
     }
 
     @Override
     public T remove(T element) {
         for (int i = 0; i < size; i++) {
-            boolean equals;
-
-            if (element == null) {
-                equals = objects[i] == null;
-            } else {
-                equals = element.equals(objects[i]);
-            }
-
-            if (equals) {
-                final T removed = (T) objects[i];
-
-                for (int j = i; j < size - 1; j++) {
-                    objects[j] = objects[j + 1];
-                }
-
-                objects[--size] = null;
-
-                return removed;
+            if (areEqual(objects[i], element)) {
+                return removeAt(i);
             }
         }
-        throw new java.util.NoSuchElementException();
+        throw new NoSuchElementException("Element not found in the list");
     }
 
     @Override
@@ -112,4 +83,52 @@ public class ArrayList<T> implements List<T> {
     public boolean isEmpty() {
         return size == 0;
     }
+
+    // ----------------- helpers -----------------
+
+    private void ensureCapacity() {
+        if (size == objects.length) {
+            int newCapacity = (int) (objects.length * GROWTH_FACTOR) + 1;
+            Object[] copy = new Object[newCapacity];
+            System.arraycopy(objects, 0, copy, 0, objects.length);
+            objects = copy;
+        }
+    }
+
+    private void checkIndex(int index) {
+        if (index < 0 || index >= size) {
+            throw new ArrayListIndexOutOfBoundsException("Index out of bound: " + index);
+        }
+    }
+
+    private void checkIndexForAdd(int index) {
+        if (index < 0 || index > size) {
+            throw new ArrayListIndexOutOfBoundsException("Index out of bound: " + index);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private T elementAt(int index) {
+        return (T) objects[index];
+    }
+
+    private boolean areEqual(Object first, Object second) {
+        if (first == null) {
+            return second == null;
+        }
+        return first.equals(second);
+    }
+
+    private T removeAt(int index) {
+        final T removed = elementAt(index);
+
+        int elementsToMove = size - index - 1;
+        if (elementsToMove > 0) {
+            System.arraycopy(objects, index + 1, objects, index, elementsToMove);
+        }
+
+        objects[--size] = null;
+        return removed;
+    }
 }
+
